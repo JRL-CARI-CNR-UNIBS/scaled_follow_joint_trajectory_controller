@@ -433,7 +433,7 @@ void ScaledFJTController<H,T>::actionServerThread()
 
     if ((m_is_finished==1) || (((m_scaled_time-m_microinterpolator->trjTime()).toSec()>0) && m_is_in_tolerance))
     {
-      this->addDiagnosticsMessage("OK", "£", {{"INTERPOLATOR", "Goal tolerance achieved!"}} , &report);
+      this->addDiagnosticsMessage("OK", "Goal reached. Robot is in tolerance.", {{"INTERPOLATOR", "Goal tolerance achieved!"}} , &report);
       CNR_INFO(this->logger(), report.str());
 
       control_msgs::FollowJointTrajectoryResult result;
@@ -447,7 +447,7 @@ void ScaledFJTController<H,T>::actionServerThread()
       result.error_code = -4;
       result.error_string = "Some problem occurs";
 
-      this->addDiagnosticsMessage("ERROR", "£", {{"INTERPOLATOR", "Some problem occurs"}}, &report);
+      this->addDiagnosticsMessage("ERROR", "Error", {{"INTERPOLATOR", "Some problem occurs"}}, &report);
       CNR_ERROR(this->logger(), report.str());
 
       m_gh->setAborted(result);
