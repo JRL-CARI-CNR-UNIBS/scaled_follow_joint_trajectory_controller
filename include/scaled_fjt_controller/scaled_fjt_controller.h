@@ -86,7 +86,6 @@ protected:
   bool use_time_compensation_;
   bool use_saturation_override_;
 
-  int m_is_finished;
   std::mutex m_mtx;
 
   boost::shared_ptr<actionlib::ActionServer<control_msgs::FollowJointTrajectoryAction>> m_as;

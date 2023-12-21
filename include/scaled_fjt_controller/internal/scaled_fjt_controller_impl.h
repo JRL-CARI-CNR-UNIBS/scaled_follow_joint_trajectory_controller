@@ -300,7 +300,8 @@ bool ScaledFJTController<H,T>::doUpdate(const ros::Time& time, const ros::Durati
     unscaled_js_msg->header.stamp  = ros::Time::now();
     this->publish(m_unscaled_pub_id,unscaled_js_msg);
 
-    m_is_in_tolerance=true;
+    bool previous_is_in_tolerance=m_is_in_tolerance;
+    bool is_in_tolerance=true;
 
 
     for (size_t iAx=0;iAx<this->nAx();iAx++)
@@ -323,21 +324,32 @@ bool ScaledFJTController<H,T>::doUpdate(const ros::Time& time, const ros::Durati
 
     if (m_check_tolerance)
     {
+
       if (m_goal_tolerance.size()==1)
       {
-        m_is_in_tolerance = (target_position-actual_position).cwiseAbs().maxCoeff()<m_goal_tolerance(0);
+        is_in_tolerance = (target_position-actual_position).cwiseAbs().maxCoeff()<m_goal_tolerance(0);
       }
       else
       {
-        m_is_in_tolerance = (((target_position-actual_position).cwiseAbs()-m_goal_tolerance).array()<0.0).all();
+        is_in_tolerance = (((target_position-actual_position).cwiseAbs()-m_goal_tolerance).array()<0.0).all();
+      }
+      if (previous_is_in_tolerance != is_in_tolerance)
+      {
+        CNR_DEBUG(this->logger(),"Tolerance. Last cycle = %s, actual cycle = %s",previous_is_in_tolerance?"true":"false",m_is_in_tolerance?"true":"false");
+        CNR_DEBUG(this->logger(),"target          = " << (target_position).cwiseAbs().transpose());
+        CNR_DEBUG(this->logger(),"actual          = " << (actual_position).cwiseAbs().transpose());
+        CNR_DEBUG(this->logger(),"target - actual = " << (target_position-actual_position).cwiseAbs().transpose());
       }
     }
+    m_is_in_tolerance=is_in_tolerance;
     if (not m_is_in_tolerance)
+    {
       ROS_DEBUG_STREAM_THROTTLE(1,
                                "\n target_position  = " << (target_position).transpose() <<
                                "\n actual_position  = " << (actual_position).transpose() <<
                                "\n error            = " << (target_position-actual_position).transpose() <<
                                "\n tolerance        = " << m_goal_tolerance.transpose());
+    }
 
 
   }
@@ -431,7 +443,7 @@ void ScaledFJTController<H,T>::actionServerThread()
       break;
     }
 
-    if ((m_is_finished==1) || (((m_scaled_time-m_microinterpolator->trjTime()).toSec()>0) && m_is_in_tolerance))
+    if (((m_scaled_time-m_microinterpolator->trjTime()).toSec()>0) && m_is_in_tolerance)
     {
       this->addDiagnosticsMessage("OK", "Goal reached. Robot is in tolerance.", {{"INTERPOLATOR", "Goal tolerance achieved!"}} , &report);
       CNR_INFO(this->logger(), report.str());
@@ -439,18 +451,6 @@ void ScaledFJTController<H,T>::actionServerThread()
       control_msgs::FollowJointTrajectoryResult result;
       m_gh->setSucceeded(result);
 
-      break;
-    }
-    else if (m_is_finished == -2)
-    {
-      control_msgs::FollowJointTrajectoryResult result;
-      result.error_code = -4;
-      result.error_string = "Some problem occurs";
-
-      this->addDiagnosticsMessage("ERROR", "Error", {{"INTERPOLATOR", "Some problem occurs"}}, &report);
-      CNR_ERROR(this->logger(), report.str());
-
-      m_gh->setAborted(result);
       break;
     }
   }
@@ -513,7 +513,6 @@ void ScaledFJTController<H,T>::actionGoalCallback(
     m_microinterpolator->setTrajectory(trj);
     m_scaled_time=ros::Duration(0);
     m_time=ros::Duration(0);
-    m_is_finished=0;
 
     std::stringstream ss1;
     ss1 << "[ ";
