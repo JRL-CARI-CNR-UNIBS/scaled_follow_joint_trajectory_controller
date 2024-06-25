@@ -1,6 +1,7 @@
 #pragma once // workaround qtcreator clang-tidy
 
 
+#include "cnr_controller_interface/cnr_joint_command_controller_interface.h"
 #include <memory>
 #include <thread>
 #include <name_sorting/sort_trajectories.h>
@@ -38,6 +39,8 @@ template<class H, class T>
 bool ScaledFJTController<H,T>::doInit()
 {
   CNR_TRACE_START(this->logger());
+
+  this->setPriority(this->NONE);
 
   std::string what;
   // ^^^^^^
